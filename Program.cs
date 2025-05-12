@@ -113,6 +113,7 @@ builder.Services.AddScoped<IOrganeEquipementService, OrganeEquipementService>();
 builder.Services.AddScoped<IGroupeOrganeService, GroupeOrganeService>();
 builder.Services.AddScoped<IGroupeCaracteristiqueService, GroupeCaracteristiqueService>();
 builder.Services.AddScoped<IAffectationService, AffectationService>();
+builder.Services.AddScoped<IOrganeCaracteristiqueService, OrganeCaracteristiqueService>();
 
 var app = builder.Build();
 
