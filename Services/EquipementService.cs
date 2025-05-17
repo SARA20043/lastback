@@ -49,6 +49,8 @@ namespace PFE_PROJECT.Services
                                idGrpIdq = e.idGrpIdq,
                                groupeIdentiqueDesignation = grp != null ? grp.codegrp : string.Empty,
                                etat = e.etat ?? string.Empty,
+                               numserie = e.numserie,
+                               position_physique = e.position_physique,
                                DateMiseService = e.DateMiseService,
                                AnnéeFabrication = e.AnnéeFabrication,
                                DateAcquisition = e.DateAcquisition,
@@ -84,6 +86,12 @@ namespace PFE_PROJECT.Services
                     
                     if (filter.idGrpIdq.HasValue)
                         query = query.Where(e => e.idGrpIdq == filter.idGrpIdq);
+                    
+                    if (!string.IsNullOrEmpty(filter.numserie))
+                        query = query.Where(e => e.numserie == filter.numserie);
+                    
+                    if (!string.IsNullOrEmpty(filter.position_physique))
+                        query = query.Where(e => e.position_physique == filter.position_physique);
                     
                     if (filter.DateMiseService.HasValue)
                         query = query.Where(e => e.DateMiseService == filter.DateMiseService);
@@ -151,6 +159,8 @@ namespace PFE_PROJECT.Services
                 idGrpIdq = equipement.idGrpIdq,
                 groupeIdentiqueDesignation = equipement.GroupeIdentique != null ? equipement.GroupeIdentique.codegrp : null,
                 etat = equipement.etat,
+                numserie = equipement.numserie,
+                position_physique = equipement.position_physique,
                 DateMiseService = equipement.DateMiseService,
                 AnnéeFabrication = equipement.AnnéeFabrication,
                 DateAcquisition = equipement.DateAcquisition,
@@ -186,6 +196,8 @@ namespace PFE_PROJECT.Services
                 idGrpIdq = equipement.idGrpIdq,
                 groupeIdentiqueDesignation = equipement.GroupeIdentique != null ? equipement.GroupeIdentique.codegrp : null,
                 etat = equipement.etat,
+                numserie = equipement.numserie,
+                position_physique = equipement.position_physique,
                 DateMiseService = equipement.DateMiseService,
                 AnnéeFabrication = equipement.AnnéeFabrication,
                 DateAcquisition = equipement.DateAcquisition,
@@ -199,7 +211,7 @@ namespace PFE_PROJECT.Services
         {
             // Validate etat
             if (!await ValidateEtatAsync(dto.etat))
-                throw new ArgumentException("État invalide");
+                throw new ArgumentException("État invalide. Les états valides sont: operationnel, En panne, pre_reforme, reforme");
             
             // Get the categorie from database to validate
             var categorie = await _context.Categories.FindAsync(dto.idCat);
@@ -258,7 +270,9 @@ namespace PFE_PROJECT.Services
                 idMarq = dto.idMarq,
                 design = dto.design,
                 idGrpIdq = idGrpIdq,
-                etat = dto.etat,
+                etat = dto.etat ?? "operationnel", // Default to operationnel if not provided
+                numserie = dto.numserie,
+                position_physique = dto.position_physique,
                 DateMiseService = dto.DateMiseService,
                 AnnéeFabrication = dto.AnnéeFabrication,
                 DateAcquisition = dto.DateAcquisition,
@@ -285,37 +299,49 @@ namespace PFE_PROJECT.Services
 
         public async Task<EquipementDTO?> UpdateAsync(int id, UpdateEquipementDTO dto)
         {
-            var equipement = await _context.Equipements.FindAsync(id);
+            var equipement = await _context.Equipements
+                .Include(e => e.TypeEquip)
+                .Include(e => e.Categorie)
+                .Include(e => e.Marque)
+                .Include(e => e.GroupeIdentique)
+                .Include(e => e.Unite)
+                .FirstOrDefaultAsync(e => e.idEqpt == id);
+
             if (equipement == null) return null;
 
             // Check if equipment is in a restricted state
-            if (equipement.etat == "Réformé" || equipement.etat == "Prêt")
+            if (equipement.etat == "reforme" || equipement.etat == "pre_reforme")
             {
-                throw new InvalidOperationException($"Impossible de modifier un équipement en état '{equipement.etat}'");
+                throw new InvalidOperationException($"Impossible de modifier un équipement en état '{equipement.etat}'. Les équipements en état 'pre_reforme' ou 'reforme' ne peuvent pas être modifiés.");
             }
 
-            // Validate etat
-            if (!await ValidateEtatAsync(dto.etat))
-                throw new ArgumentException("État invalide");
-            
-            // Get the categorie from database to validate
-            var categorie = await _context.Categories.FindAsync(dto.idCat);
-            if (categorie == null)
-                throw new ArgumentException("Catégorie invalide");
+            // Validate etat if provided and not empty
+            if (!string.IsNullOrEmpty(dto.etat) && dto.etat != "string" && !await ValidateEtatAsync(dto.etat))
+                throw new ArgumentException("État invalide. Les états valides sont: operationnel, En panne, pre_reforme, reforme");
 
-            equipement.idType = dto.idType;
-            equipement.idCat = dto.idCat;
-            equipement.idMarq = dto.idMarq;
-            equipement.design = dto.design;
-            equipement.idGrpIdq = dto.idGrpIdq;
-            equipement.etat = dto.etat;
-            equipement.DateMiseService = dto.DateMiseService;
-            equipement.AnnéeFabrication = dto.AnnéeFabrication;
-            equipement.DateAcquisition = dto.DateAcquisition;
-            equipement.ValeurAcquisition = dto.ValeurAcquisition;
-            equipement.idunite = dto.idunite;
+            // Update only the fields that are provided in the DTO and not default values
+            if (dto.idType > 0) equipement.idType = dto.idType;
+            if (dto.idCat > 0) equipement.idCat = dto.idCat;
+            if (dto.idMarq > 0) equipement.idMarq = dto.idMarq;
+            if (!string.IsNullOrEmpty(dto.design) && dto.design != "string") equipement.design = dto.design;
+            if (dto.idGrpIdq.HasValue && dto.idGrpIdq > 0) equipement.idGrpIdq = dto.idGrpIdq;
+            if (!string.IsNullOrEmpty(dto.etat) && dto.etat != "string") equipement.etat = dto.etat;
+            if (!string.IsNullOrEmpty(dto.numserie) && dto.numserie != "string") equipement.numserie = dto.numserie;
+            if (!string.IsNullOrEmpty(dto.position_physique) && dto.position_physique != "string") 
+                equipement.position_physique = dto.position_physique;
+            if (dto.DateMiseService.HasValue && dto.DateMiseService != DateTime.MinValue) 
+                equipement.DateMiseService = dto.DateMiseService;
+            if (dto.AnnéeFabrication.HasValue && dto.AnnéeFabrication > 0) 
+                equipement.AnnéeFabrication = dto.AnnéeFabrication;
+            if (dto.DateAcquisition.HasValue && dto.DateAcquisition != DateTime.MinValue) 
+                equipement.DateAcquisition = dto.DateAcquisition;
+            if (dto.ValeurAcquisition.HasValue && dto.ValeurAcquisition > 0) 
+                equipement.ValeurAcquisition = dto.ValeurAcquisition;
+            if (dto.idunite.HasValue && dto.idunite > 0) equipement.idunite = dto.idunite;
 
             await _context.SaveChangesAsync();
+
+            // Reload the equipment with all related data
             return await GetByIdAsync(id);
         }
 
@@ -333,7 +359,7 @@ namespace PFE_PROJECT.Services
         {
             if (string.IsNullOrEmpty(etat)) return true;
             
-            var validEtats = new[] { "En Service", "En panne", "En stock", "Réformé", "Prêt" };
+            var validEtats = new[] { "operationnel", "En panne", "pre_reforme", "reforme" };
             return validEtats.Contains(etat);
         }
     }

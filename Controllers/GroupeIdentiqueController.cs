@@ -84,8 +84,15 @@ namespace PFE_PROJECT.Controllers
             var canDelete = await _service.CanDeleteGroupeAsync(id);
             return Ok(canDelete);
         }
-        
 
+        [HttpGet("byTypeAndMarque")]
+        public async Task<ActionResult<IEnumerable<GroupeIdentiqueDTO>>> GetByTypeAndMarque(
+            [FromQuery] int typeId,
+            [FromQuery] int marqueId)
+        {
+            var result = await _service.GetByTypeAndMarqueAsync(typeId, marqueId);
+            return Ok(result);
+        }
         
     }
 }

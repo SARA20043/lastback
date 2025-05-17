@@ -76,17 +76,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// ➕ CORS : autoriser toutes les origines (ajuste si besoin)
+// ➕ CORS : autoriser les origines spécifiques
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
-        builder =>
-        {
-            builder.SetIsOriginAllowed(origin => true) // Allow any origin
-                   .AllowAnyMethod()
-                   .AllowAnyHeader()
-                   .AllowCredentials();
-        });
+    options.AddPolicy("AllowAngularDev", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyHeader()
+              .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+              .AllowCredentials()
+              .WithExposedHeaders("Content-Disposition");
+    });
 });
 
 // ➕ Repositories & Services - Utilisateur / Rôles
@@ -117,7 +117,9 @@ builder.Services.AddScoped<IOrganeCaracteristiqueService, OrganeCaracteristiqueS
 
 var app = builder.Build();
 
-// ➤ Pipeline de traitement HTTP
+// Important: CORS must be one of the first middleware components
+app.UseCors("AllowAngularDev");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -125,10 +127,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Authentication and Authorization after CORS
 app.UseHttpsRedirection();
-
-app.UseCors("AllowAll");
-
 app.UseAuthentication();
 app.UseAuthorization();
 
