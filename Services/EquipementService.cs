@@ -55,6 +55,7 @@ namespace PFE_PROJECT.Services
                                AnnéeFabrication = e.AnnéeFabrication,
                                DateAcquisition = e.DateAcquisition,
                                ValeurAcquisition = e.ValeurAcquisition,
+                               observation = e.observation,
                                idunite = e.idunite,
                                uniteDesignation = unite != null ? unite.designation : string.Empty
                            };
@@ -156,6 +157,7 @@ namespace PFE_PROJECT.Services
                 marqueNom = equipement.Marque.nom_fabriquant,
                 codeEqp = equipement.codeEqp,
                 design = equipement.design,
+                observation = equipement.observation,
                 idGrpIdq = equipement.idGrpIdq,
                 groupeIdentiqueDesignation = equipement.GroupeIdentique != null ? equipement.GroupeIdentique.codegrp : null,
                 etat = equipement.etat,
@@ -193,6 +195,7 @@ namespace PFE_PROJECT.Services
                 marqueNom = equipement.Marque.nom_fabriquant,
                 codeEqp = equipement.codeEqp,
                 design = equipement.design,
+                observation = equipement.observation,
                 idGrpIdq = equipement.idGrpIdq,
                 groupeIdentiqueDesignation = equipement.GroupeIdentique != null ? equipement.GroupeIdentique.codegrp : null,
                 etat = equipement.etat,
@@ -269,7 +272,7 @@ namespace PFE_PROJECT.Services
                 idCat = dto.idCat,
                 idMarq = dto.idMarq,
                 design = dto.design,
-                idGrpIdq = idGrpIdq,
+                observation = dto.observation ?? string.Empty,
                 etat = dto.etat ?? "operationnel", // Default to operationnel if not provided
                 numserie = dto.numserie,
                 position_physique = dto.position_physique,
@@ -326,9 +329,11 @@ namespace PFE_PROJECT.Services
             if (!string.IsNullOrEmpty(dto.design) && dto.design != "string") equipement.design = dto.design;
             if (dto.idGrpIdq.HasValue && dto.idGrpIdq > 0) equipement.idGrpIdq = dto.idGrpIdq;
             if (!string.IsNullOrEmpty(dto.etat) && dto.etat != "string") equipement.etat = dto.etat;
-            if (!string.IsNullOrEmpty(dto.numserie) && dto.numserie != "string") equipement.numserie = dto.numserie;
-            if (!string.IsNullOrEmpty(dto.position_physique) && dto.position_physique != "string") 
+            if (!string.IsNullOrEmpty(dto.numserie)) equipement.numserie = dto.numserie;
+            if (!string.IsNullOrEmpty(dto.position_physique)) 
                 equipement.position_physique = dto.position_physique;
+            if (dto.observation != null) 
+                equipement.observation = dto.observation;
             if (dto.DateMiseService.HasValue && dto.DateMiseService != DateTime.MinValue) 
                 equipement.DateMiseService = dto.DateMiseService;
             if (dto.AnnéeFabrication.HasValue && dto.AnnéeFabrication > 0) 
