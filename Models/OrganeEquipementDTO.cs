@@ -28,4 +28,11 @@ namespace PFE_PROJECT.Models
         [StringLength(100)]
         public string numsérie { get; set; } = string.Empty;
     }
+
+    public class UpdateOrganeEquipementDTO
+    {
+        [Required]
+        [StringLength(100)]
+        public string? numsérie { get; set; }
+    }
 } 

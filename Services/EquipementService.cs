@@ -63,45 +63,61 @@ namespace PFE_PROJECT.Services
                 // Apply search term if provided
                 if (filter != null && !string.IsNullOrEmpty(filter.searchTerm))
                 {
-                    var lowerSearch = filter.searchTerm.ToLower();
+                    var searchTerm = filter.searchTerm.ToLower().Trim();
                     query = query.Where(e =>
-                        (e.design != null && e.design.ToLower().Contains(lowerSearch)) ||
-                        (e.codeEqp != null && e.codeEqp.ToLower().Contains(lowerSearch))
+                        (e.design != null && e.design.ToLower().Contains(searchTerm)) ||
+                        (e.codeEqp != null && e.codeEqp.ToLower().Contains(searchTerm)) ||
+                        (e.numserie != null && e.numserie.ToLower().Contains(searchTerm)) ||
+                        (e.position_physique != null && e.position_physique.ToLower().Contains(searchTerm)) ||
+                        (e.typeDesignation != null && e.typeDesignation.ToLower().Contains(searchTerm)) ||
+                        (e.marqueNom != null && e.marqueNom.ToLower().Contains(searchTerm)) ||
+                        (e.categorieDesignation != null && e.categorieDesignation.ToLower().Contains(searchTerm)) ||
+                        (e.uniteDesignation != null && e.uniteDesignation.ToLower().Contains(searchTerm)) ||
+                        (e.etat != null && e.etat.ToLower().Contains(searchTerm))
                     );
                 }
 
                 // Apply filters if provided
                 if (filter != null)
                 {
-                    if (filter.idCat.HasValue)
+                    // Apply flexible filters
+                    if (filter.idCat.HasValue && filter.idCat > 0)
                         query = query.Where(e => e.idCat == filter.idCat);
                     
                     if (!string.IsNullOrEmpty(filter.etat))
-                        query = query.Where(e => e.etat == filter.etat);
+                        query = query.Where(e => e.etat != null && e.etat.ToLower().Contains(filter.etat.ToLower()));
                     
-                    if (filter.idMarq.HasValue)
+                    if (filter.idMarq.HasValue && filter.idMarq > 0)
                         query = query.Where(e => e.idMarq == filter.idMarq);
                     
-                    if (filter.idType.HasValue)
+                    if (filter.idType.HasValue && filter.idType > 0)
                         query = query.Where(e => e.idType == filter.idType);
                     
-                    if (filter.idGrpIdq.HasValue)
+                    if (filter.idGrpIdq.HasValue && filter.idGrpIdq > 0)
                         query = query.Where(e => e.idGrpIdq == filter.idGrpIdq);
                     
+                    if (filter.idunite.HasValue && filter.idunite > 0)
+                        query = query.Where(e => e.idunite == filter.idunite);
+                    
                     if (!string.IsNullOrEmpty(filter.numserie))
-                        query = query.Where(e => e.numserie == filter.numserie);
+                        query = query.Where(e => e.numserie != null && e.numserie.ToLower().Contains(filter.numserie.ToLower()));
                     
                     if (!string.IsNullOrEmpty(filter.position_physique))
-                        query = query.Where(e => e.position_physique == filter.position_physique);
+                        query = query.Where(e => e.position_physique != null && e.position_physique.ToLower().Contains(filter.position_physique.ToLower()));
+                    
+                    if (!string.IsNullOrEmpty(filter.design))
+                        query = query.Where(e => e.design != null && e.design.ToLower().Contains(filter.design.ToLower()));
                     
                     if (filter.DateMiseService.HasValue)
-                        query = query.Where(e => e.DateMiseService == filter.DateMiseService);
+                        query = query.Where(e => e.DateMiseService.HasValue && 
+                            e.DateMiseService.Value.Date == filter.DateMiseService.Value.Date);
                     
                     if (filter.AnnéeFabrication.HasValue)
                         query = query.Where(e => e.AnnéeFabrication == filter.AnnéeFabrication);
                     
                     if (filter.DateAcquisition.HasValue)
-                        query = query.Where(e => e.DateAcquisition == filter.DateAcquisition);
+                        query = query.Where(e => e.DateAcquisition.HasValue && 
+                            e.DateAcquisition.Value.Date == filter.DateAcquisition.Value.Date);
                     
                     if (filter.ValeurAcquisition.HasValue)
                         query = query.Where(e => e.ValeurAcquisition == filter.ValeurAcquisition);
@@ -113,6 +129,10 @@ namespace PFE_PROJECT.Services
                         "design" => filter.ascending ? query.OrderBy(e => e.design) : query.OrderByDescending(e => e.design),
                         "codeeqp" => filter.ascending ? query.OrderBy(e => e.codeEqp) : query.OrderByDescending(e => e.codeEqp),
                         "etat" => filter.ascending ? query.OrderBy(e => e.etat) : query.OrderByDescending(e => e.etat),
+                        "numserie" => filter.ascending ? query.OrderBy(e => e.numserie) : query.OrderByDescending(e => e.numserie),
+                        "position_physique" => filter.ascending ? query.OrderBy(e => e.position_physique) : query.OrderByDescending(e => e.position_physique),
+                        "dateacquisition" => filter.ascending ? query.OrderBy(e => e.DateAcquisition) : query.OrderByDescending(e => e.DateAcquisition),
+                        "datemiseservice" => filter.ascending ? query.OrderBy(e => e.DateMiseService) : query.OrderByDescending(e => e.DateMiseService),
                         _ => filter.ascending ? query.OrderBy(e => e.idEqpt) : query.OrderByDescending(e => e.idEqpt)
                     };
                 }
@@ -123,7 +143,9 @@ namespace PFE_PROJECT.Services
                 }
 
                 // Execute the query
-                return await query.ToListAsync();
+                var results = await query.ToListAsync();
+                Console.WriteLine($"�� Résultats trouvés: {results.Count}");
+                return results;
             }
             catch (Exception ex)
             {
@@ -322,32 +344,34 @@ namespace PFE_PROJECT.Services
             if (!string.IsNullOrEmpty(dto.etat) && dto.etat != "string" && !await ValidateEtatAsync(dto.etat))
                 throw new ArgumentException("État invalide. Les états valides sont: operationnel, En panne, pre_reforme, reforme");
 
-            // Update only the fields that are provided in the DTO and not default values
+            // Update fields without restrictive conditions
             if (dto.idType > 0) equipement.idType = dto.idType;
             if (dto.idCat > 0) equipement.idCat = dto.idCat;
             if (dto.idMarq > 0) equipement.idMarq = dto.idMarq;
             if (!string.IsNullOrEmpty(dto.design) && dto.design != "string") equipement.design = dto.design;
-            if (dto.idGrpIdq.HasValue && dto.idGrpIdq > 0) equipement.idGrpIdq = dto.idGrpIdq;
+            if (dto.idGrpIdq.HasValue) equipement.idGrpIdq = dto.idGrpIdq;
             if (!string.IsNullOrEmpty(dto.etat) && dto.etat != "string") equipement.etat = dto.etat;
             if (!string.IsNullOrEmpty(dto.numserie)) equipement.numserie = dto.numserie;
-            if (!string.IsNullOrEmpty(dto.position_physique)) 
-                equipement.position_physique = dto.position_physique;
-            if (dto.observation != null) 
-                equipement.observation = dto.observation;
-            if (dto.DateMiseService.HasValue && dto.DateMiseService != DateTime.MinValue) 
-                equipement.DateMiseService = dto.DateMiseService;
-            if (dto.AnnéeFabrication.HasValue && dto.AnnéeFabrication > 0) 
-                equipement.AnnéeFabrication = dto.AnnéeFabrication;
-            if (dto.DateAcquisition.HasValue && dto.DateAcquisition != DateTime.MinValue) 
-                equipement.DateAcquisition = dto.DateAcquisition;
-            if (dto.ValeurAcquisition.HasValue && dto.ValeurAcquisition > 0) 
-                equipement.ValeurAcquisition = dto.ValeurAcquisition;
-            if (dto.idunite.HasValue && dto.idunite > 0) equipement.idunite = dto.idunite;
+            if (!string.IsNullOrEmpty(dto.position_physique)) equipement.position_physique = dto.position_physique;
+            //ate observation to match create behavior
+            equipement.observation = dto.observation ?? string.Empty;
+            if (dto.DateMiseService.HasValue) equipement.DateMiseService = dto.DateMiseService;
+            if (dto.AnnéeFabrication.HasValue) equipement.AnnéeFabrication = dto.AnnéeFabrication;
+            if (dto.DateAcquisition.HasValue) equipement.DateAcquisition = dto.DateAcquisition;
+            if (dto.ValeurAcquisition.HasValue) equipement.ValeurAcquisition = dto.ValeurAcquisition;
+            if (dto.idunite.HasValue) equipement.idunite = dto.idunite;
 
-            await _context.SaveChangesAsync();
-
-            // Reload the equipment with all related data
-            return await GetByIdAsync(id);
+            try
+            {
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"Équipement mis à jour avec succès: {equipement.idEqpt}");
+                return await GetByIdAsync(id);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la mise à jour: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task<bool> DeleteAsync(int id)

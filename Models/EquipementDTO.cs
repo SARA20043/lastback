@@ -60,6 +60,7 @@ namespace PFE_PROJECT.Models
         public string numserie { get; set; } = "INCONNU";
         public string position_physique { get; set; } = "INCONNU";
         public DateTime? DateMiseService { get; set; }
+        [JsonPropertyName("anneeFabrication")]
         public int? AnnéeFabrication { get; set; }
         public DateTime? DateAcquisition { get; set; }
         public decimal? ValeurAcquisition { get; set; }
@@ -73,9 +74,12 @@ namespace PFE_PROJECT.Models
         public int? idMarq { get; set; }
         public int? idType { get; set; }
         public int? idGrpIdq { get; set; }
+        public int? idunite { get; set; }
         public string? numserie { get; set; }
         public string? position_physique { get; set; }
+        public string? design { get; set; }
         public DateTime? DateMiseService { get; set; }
+        [JsonPropertyName("anneeFabrication")]
         public int? AnnéeFabrication { get; set; }
         public DateTime? DateAcquisition { get; set; }
         public decimal? ValeurAcquisition { get; set; }
